@@ -374,11 +374,11 @@ do_tools_detect_printer_usb_serial() {
   echo "Please remove your printers USB cable then press ENTER to continue..."
   read
 
-  DMESG_LAST_MSG=$(dmesg | grep -E '^\[[0-9\.]+\]' | tail -n 1 | awk ' { print $1 } ')
+  DMESG_LAST_MSG=$(dmesg | grep -E '^\[\s*[0-9\.]+\]' | tail -n 1 | awk ' { print $1 } ')
   udevadm monitor -p > $TMPFILE_UDEV_MONITOR &
   UDEV_MONITOR_PID=$!
 
-  find /dev/tty* /dev/serial -xdev > $TMPFILE_FIND_PRE
+  find /dev/tty* /dev/serial -xdev > $TMPFILE_FIND_PRE 2> /dev/null
 
   echo "Now insert your printers USB cable then press ENTER to continue..."
   read
