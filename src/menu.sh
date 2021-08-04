@@ -394,7 +394,7 @@ do_tools_detect_printer_usb_serial() {
   echo -e "\n\n" >> $REPORT_FILE
 
   echo "===DMESG:" >> $REPORT_FILE
-  dmesg | grep -F "${DMESG_LAST_MSG}" -A $(dmesg | wc -l) >> $REPORT_FILE
+  dmesg | grep -F "${DMESG_LAST_MSG}" -A $(dmesg | wc -l) | tail -n +2> >> $REPORT_FILE
   echo -e "\n\n" >> $REPORT_FILE
 
   echo "===UDEV MONITOR:" >> $REPORT_FILE
