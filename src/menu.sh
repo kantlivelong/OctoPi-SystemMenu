@@ -348,7 +348,7 @@ do_octoprint_config_check() {
 
 do_tools() {
   CHOICE=$(whiptail --title "OctoPi System Menu" --menu "Tools" --cancel-button "Back" 20 60 10 \
-    "1" "Detect Printer USB Serial" \
+    "1" "Pluggable Device Differ" \
     3>&1 1>&2 2>&3)
   RET=$?
 
@@ -357,34 +357,33 @@ do_tools() {
   elif [ $RET -eq 0 ]; then
     case $CHOICE in
       "1")
-        do_tools_detect_printer_usb_serial
+        do_tools_pluggable_device_differ
         ;;
     esac
   fi
-  do_octoprint
+  do_tools
 }
 
-do_tools_detect_printer_usb_serial() {
+do_tools_pluggable_device_differ() {
   REPORT_FILE=$(mktemp)
 
   TMPFILE_UDEV_MONITOR=$(mktemp)
   TMPFILE_FIND_PRE=$(mktemp)
   TMPFILE_FIND_POST=$(mktemp)
 
-  echo "Please remove your printers USB cable then press ENTER to continue..."
-  read
+  whiptail --msgbox "If you haven't already done so please remove the device to be detected. Then press OK to continue" 20 60 1
+  sleep 1
 
   DMESG_LAST_MSG=$(dmesg | grep -oE '^\[\s*[0-9\.]+\]'| tail -n 1)
   udevadm monitor -p > $TMPFILE_UDEV_MONITOR &
   UDEV_MONITOR_PID=$!
 
-  find /dev/tty* /dev/serial -xdev -not -type d > $TMPFILE_FIND_PRE 2> /dev/null
+  find /dev -xdev -not -type d > $TMPFILE_FIND_PRE 2> /dev/null
 
-  echo "Now insert your printers USB cable then press ENTER to continue..."
-  read
+  whiptail --msgbox "Now insert the device to be detected. Press OK to continue" 20 60 1
+  sleep 1
 
-  sleep 5
-  find /dev/tty* /dev/serial -xdev > $TMPFILE_FIND_POST
+  find /dev -xdev -not -type d > $TMPFILE_FIND_POST
   kill $UDEV_MONITOR_PID > /dev/null 2>&1
 
   echo -e "---Generated - $(date)\n" > $REPORT_FILE
@@ -398,13 +397,15 @@ do_tools_detect_printer_usb_serial() {
   echo -e "\n\n" >> $REPORT_FILE
 
   echo "===UDEV MONITOR:" >> $REPORT_FILE
-  cat $TMPFILE_UDEV_MONITOR >> $REPORT_FILE
+  tail -n +4 $TMPFILE_UDEV_MONITOR >> $REPORT_FILE
 
 
-  nano -R -v $REPORT_FILE
-  echo "A copy of the report can be found at ${REPORT_FILE}"
-  echo "Press ENTER to continue..."
-  read
+  whiptail --yesno "A copy of the report can be found at ${REPORT_FILE}. Would you like to display it now?" 20 60 1
+  RET=$?
+
+  if [ $RET -eq 0 ]; then
+    nano -R -v $REPORT_FILE
+  fi
 }
 
 do_main() {
