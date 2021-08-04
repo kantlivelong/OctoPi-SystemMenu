@@ -346,11 +346,73 @@ do_octoprint_config_check() {
   do_octoprint
 }
 
+do_tools() {
+  CHOICE=$(whiptail --title "OctoPi System Menu" --menu "Tools" --cancel-button "Back" 20 60 10 \
+    "1" "Detect Printer USB Serial" \
+    3>&1 1>&2 2>&3)
+  RET=$?
+
+  if [ $RET -eq 1 ]; then
+    return 0
+  elif [ $RET -eq 0 ]; then
+    case $CHOICE in
+      "1")
+        do_tools_detect_printer_usb_serial
+        ;;
+    esac
+  fi
+  do_octoprint
+}
+
+do_tools_detect_printer_usb_serial() {
+  REPORT_FILE=$(mktemp)
+
+  TMPFILE_UDEV_MONITOR=$(mktemp)
+  TMPFILE_FIND_PRE=$(mktemp)
+  TMPFILE_FIND_POST=$(mktemp)
+
+  echo "Please remove your printers USB cable then press ENTER to continue..."
+  read
+
+  DMESG_LAST_MSG=$(dmesg | grep -E '^\[[0-9\.]+\]' | tail -n 1 | awk ' { print $1 } ')
+  udevadm monitor -p > $TMPFILE_UDEV_MONITOR &
+  UDEV_MONITOR_PID=$!
+
+  find /dev/tty* /dev/serial -xdev > $TMPFILE_FIND_PRE
+
+  echo "Now insert your printers USB cable then press ENTER to continue..."
+  read
+
+  sleep 5
+  find /dev/tty* /dev/serial -xdev > $TMPFILE_FIND_POST
+  kill $UDEV_MONITOR_PID > /dev/null 2>&1
+
+  echo -e "---Generated - $(date)\n" > $REPORT_FILE
+
+  echo "===DEV PATHS:" >> $REPORT_FILE
+  diff $TMPFILE_FIND_PRE $TMPFILE_FIND_POST | grep '^>' | sed 's/> //g' >> $REPORT_FILE
+  echo -e "\n\n" >> $REPORT_FILE
+
+  echo "===DMESG:" >> $REPORT_FILE
+  dmesg | grep -F "${DMESG_LAST_MSG}" -A $(dmesg | wc -l) >> $REPORT_FILE
+  echo -e "\n\n" >> $REPORT_FILE
+
+  echo "===UDEV MONITOR:" >> $REPORT_FILE
+  cat $TMPFILE_UDEV_MONITOR >> $REPORT_FILE
+
+
+  nano -R -v $REPORT_FILE
+  echo "A copy of the report can be found at ${REPORT_FILE}"
+  echo "Press ENTER to continue..."
+  read
+}
+
 do_main() {
   CHOICE=$(whiptail --title "OctoPi System Menu" --menu "" --cancel-button "Quit" 20 60 10 \
     "1" "Service Management" \
     "2" "OctoPrint Management" \
-    "3" "Exit To Terminal" \
+    "3" "Tools" \
+    "4" "Exit To Terminal" \
     3>&1 1>&2 2>&3)
   RET=$?
 
@@ -365,6 +427,9 @@ do_main() {
         do_octoprint
         ;;
       "3")
+        do_tools
+        ;;
+      "4")
         exit 0
         ;;
     esac
