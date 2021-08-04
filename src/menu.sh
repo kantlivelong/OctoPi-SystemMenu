@@ -198,7 +198,7 @@ do_octoprint_user_management() {
         INPUT=$(whiptail --inputbox "Please enter a username" 20 60 "" 3>&1 1>&2 2>&3)
         clear
         source ~/oprint/bin/activate
-        ~/oprint/bin/octoprint user password $INPUT
+        ~/oprint/bin/octoprint user password "${INPUT}"
         deactivate
         echo "Press ENTER to continue..."
         read
@@ -208,7 +208,7 @@ do_octoprint_user_management() {
         INPUT=$(whiptail --inputbox "Please enter a username" 20 60 "" 3>&1 1>&2 2>&3)
         clear
         source ~/oprint/bin/activate
-        ~/oprint/bin/octoprint user activate $INPUT
+        ~/oprint/bin/octoprint user activate "${INPUT}"
         deactivate
         echo "Press ENTER to continue..."
         read
