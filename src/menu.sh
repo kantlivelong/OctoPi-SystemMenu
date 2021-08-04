@@ -1,5 +1,47 @@
 #!/bin/bash
 
+require_octoprint_stopped() {
+  systemctl is-active --quiet octoprint
+  RET=$?
+  if [ $RET -eq 0 ]; then
+    whiptail --yesno "The OctoPrint service needs to be stopped before making changes. Continue?" 20 60 "" 3>&1 1>&2 2>&3
+    RET=$?
+
+    if [ $RET -eq 0 ]; then
+      sudo systemctl stop octoprint
+      RET=$?
+
+      if [ $RET -eq 0 ]; then
+        whiptail --msgbox "Successfully stopped service octoprint" 20 60 1
+      else
+        whiptail --msgbox "There was an error stopping service octoprint" 20 60 1
+      fi
+      return $RET
+    else
+      return 1
+    fi
+  fi
+}
+
+ask_start_octoprint() {
+  whiptail --yesno "Would you like to start OctoPrint now?" 20 60 1
+  RET=$?
+
+  if [ $RET -eq 0 ]; then
+    sudo systemctl start octoprint
+    RET=$?
+
+    if [ $RET -eq 0 ]; then
+      whiptail --msgbox "Successfully started service octoprint" 20 60 1
+    else
+      whiptail --msgbox "There was an error starting service octoprint" 20 60 1
+    fi
+    return $RET
+  else
+    return
+  fi
+}
+
 do_service_management() {
   CHOICE=$(whiptail --title "OctoPi System Menu" --menu "Service Management" --cancel-button "Back" 20 60 10 \
     "1" "OctoPrint:Stop" \
@@ -195,23 +237,45 @@ do_octoprint_user_management() {
         clear
         ;;
       "2")
+        require_octoprint_stopped
+        RET=$?
+        if [ $RET -ne 0 ];
+        then
+          return
+        fi
+
         INPUT=$(whiptail --inputbox "Please enter a username" 20 60 "" 3>&1 1>&2 2>&3)
         clear
         source ~/oprint/bin/activate
         ~/oprint/bin/octoprint user password "${INPUT}"
         deactivate
+
         echo "Press ENTER to continue..."
         read
+
+        ask_start_octoprint
+
         clear
         ;;
       "3")
+        require_octoprint_stopped
+        RET=$?
+        if [ $RET -ne 0 ];
+        then
+          return
+        fi
+
         INPUT=$(whiptail --inputbox "Please enter a username" 20 60 "" 3>&1 1>&2 2>&3)
         clear
         source ~/oprint/bin/activate
         ~/oprint/bin/octoprint user activate "${INPUT}"
         deactivate
+
         echo "Press ENTER to continue..."
         read
+
+        ask_start_octoprint
+
         clear
         ;;
     esac
@@ -220,25 +284,11 @@ do_octoprint_user_management() {
 }
 
 do_octoprint_config_edit() {
-  systemctl is-active --quiet octoprint
+  require_octoprint_stopped
   RET=$?
-  if [ $RET -eq 0 ]; then
-    whiptail --yesno "The OctoPrint service needs to be stopped before making changes. Continue?" 20 60 "" 3>&1 1>&2 2>&3
-    RET=$?
-
-    if [ $RET -eq 0 ]; then
-      sudo systemctl stop octoprint
-      RET=$?
-      
-      if [ $RET -eq 0 ]; then
-        whiptail --msgbox "Successfully stopped service octoprint" 20 60 1
-      else
-        whiptail --msgbox "There was an error stopping service octoprint" 20 60 1
-        do_octoprint_config
-      fi
-    else
-      return
-    fi
+  if [ $RET -ne 0 ];
+  then
+    return
   fi
 
   TMPFILE=$(mktemp)  
@@ -277,21 +327,8 @@ do_octoprint_config_edit() {
   cat $TMPFILE > ~/.octoprint/config.yaml
   rm $TMPFILE
 
-  whiptail --yesno "Configuration updated! Would you like to start OctoPrint?" 20 60 1
-  RET=$?
+  ask_start_octoprint
 
-  if [ $RET -eq 0 ]; then
-    sudo systemctl start octoprint
-    RET=$?
-    
-    if [ $RET -eq 0 ]; then
-      whiptail --msgbox "Successfully started service octoprint" 20 60 1
-    else
-      whiptail --msgbox "There was an error starting service octoprint" 20 60 1
-    fi
-  else
-    return
-  fi
   do_octoprint_config
 }
 
